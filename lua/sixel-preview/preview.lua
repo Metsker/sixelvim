@@ -120,6 +120,26 @@ function M._cell_size()
   return { cell_w = t.cell_w, cell_h = t.cell_h }
 end
 
+--- Find the best window currently showing a buffer.
+--- Prefers an oil-style preview window (previewwindow=true) so that when the
+--- same image is open in a regular buffer AND selected in oil, sixel goes to
+--- the preview pane instead of the regular buffer's window (which oil's float
+--- typically covers).
+---@param buf number
+---@return number|nil
+function M._find_buf_win(buf)
+  local fallback
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_buf(win) == buf then
+      if vim.wo[win].previewwindow then
+        return win
+      end
+      fallback = fallback or win
+    end
+  end
+  return fallback
+end
+
 --- Calculate the window's screen position and pixel dimensions.
 ---@param win number Window handle
 ---@return { row: number, col: number, width_px: number, height_px: number, width_cells: number, height_cells: number }
@@ -239,10 +259,8 @@ function M.open(filepath, opts)
     }
   end
 
-  local placeholder_drawn = false
   if not render.is_cached(filepath, render_size) then
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
-    placeholder_drawn = true
   end
 
   render.render(filepath, function(sixel_data, err)
@@ -261,12 +279,14 @@ function M.open(filepath, opts)
     end
 
     vim.schedule(function()
-      if placeholder_drawn then
+      local first = vim.api.nvim_buf_get_lines(buf, 0, 1, false)
+      if first[1] and first[1] ~= "" then
         vim.bo[buf].modifiable = true
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
         vim.bo[buf].modifiable = false
       end
       clean_win(win)
+      vim.cmd("redraw")
       M._render_in_win(win, buf, sixel_data, geom, filetype)
       if filetype == "pdf" and not M._pdf_state[buf] then
         local page = opts.page or config.options.pdf.page
@@ -330,17 +350,10 @@ function M.open_in_buf(buf, filepath, opts)
   vim.bo[buf].modifiable = true
   vim.b[buf].sixel_preview_filepath = filepath
 
-  -- Find the window displaying this buffer to get geometry
-  local target_win = nil
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    if vim.api.nvim_win_get_buf(win) == buf then
-      target_win = win
-      break
-    end
-  end
   -- If the buffer isn't visible, don't render: BufEnter schedules can fire
   -- after oil swapped the buffer out, and rendering to "the current window"
   -- would draw sixel in the wrong place.
+  local target_win = M._find_buf_win(buf)
   if not target_win then return end
 
   local geom = M._win_geometry(target_win)
@@ -360,15 +373,12 @@ function M.open_in_buf(buf, filepath, opts)
     }
   end
 
-  -- Only paint a "Rendering..." placeholder when we actually have to wait. On
-  -- the cache-hit path we leave the (already empty) buffer alone — otherwise
-  -- the buffer mutation triggers nvim cell redraws that wipe the sixel pixels
-  -- in tmux right after we send them.
-  local placeholder_drawn = false
+  -- Only paint a "Rendering..." placeholder when the converter actually has
+  -- to run. On a cache hit we leave the buffer untouched here; the schedule
+  -- below clears any leftover content and forces a redraw before sending sixel.
   if not render.is_cached(filepath, render_size) then
     local fname = vim.fn.fnamemodify(filepath, ":t")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
-    placeholder_drawn = true
   end
 
   render.render(filepath, function(sixel_data, err)
@@ -391,27 +401,26 @@ function M.open_in_buf(buf, filepath, opts)
     vim.schedule(function()
       if not vim.api.nvim_buf_is_valid(buf) then return end
 
-      -- Only clear the buffer if we actually wrote the placeholder. Touching
-      -- the buffer when it's already empty triggers cell redraws that wipe the
-      -- sixel in tmux.
-      if placeholder_drawn then
+      -- Clear any non-empty buffer content (placeholder, stale text from an
+      -- aborted prior render, etc.). The redraw below flushes the resulting
+      -- cell updates BEFORE the sixel is sent, so the pixels survive.
+      local first = vim.api.nvim_buf_get_lines(buf, 0, 1, false)
+      if first[1] and first[1] ~= "" then
         vim.bo[buf].modifiable = true
         vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
         vim.bo[buf].modifiable = false
       end
 
-      -- Find current window for this buffer (may have changed)
-      local win = nil
-      for _, w in ipairs(vim.api.nvim_list_wins()) do
-        if vim.api.nvim_win_get_buf(w) == buf then
-          win = w
-          break
-        end
-      end
+      local win = M._find_buf_win(buf)
       if not win then return end
 
       clean_win(win)
       local fresh_geom = M._win_geometry(win)
+      -- Force a redraw so any pending cell updates (the buffer clear above, or
+      -- the buffer swap that brought us here from a text file) hit the
+      -- terminal *before* we send sixel. Otherwise nvim emits cell clears
+      -- AFTER our pixels, wiping them in tmux.
+      vim.cmd("redraw")
       M._render_in_win(win, buf, sixel_data, fresh_geom, filetype)
 
       -- Set up PDF page navigation keybindings
