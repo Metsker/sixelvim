@@ -84,8 +84,18 @@ function M.setup(opts)
       group = group,
       callback = function(ev)
         if vim.bo[ev.buf].filetype == "sixel-preview" then
-          -- Force a full screen redraw to clear sixel artifacts
+          local buf = ev.buf
           vim.schedule(function()
+            -- Oil's preview briefly focuses the preview window and switches
+            -- back to oil, firing BufLeave even though the preview buffer is
+            -- still on-screen. Clearing then would wipe a freshly-rendered
+            -- sixel (the cache-hit path schedules render-to-screen *before*
+            -- this BufLeave runs), causing a one-frame blink.
+            for _, win in ipairs(vim.api.nvim_list_wins()) do
+              if vim.api.nvim_win_get_buf(win) == buf then
+                return
+              end
+            end
             vim.cmd("mode")
           end)
         end

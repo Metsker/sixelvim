@@ -24,6 +24,14 @@ function M._cache_key(filepath, size)
     .. (converters.detect(filepath) == "pdf" and (":p" .. page) or "")
 end
 
+--- Check whether the result is already cached.
+---@param filepath string
+---@param size? table
+---@return boolean
+function M.is_cached(filepath, size)
+  return M._cache[M._cache_key(filepath, size)] ~= nil
+end
+
 --- Clear the entire cache or a specific file's entries.
 ---@param filepath? string If given, only clear entries for this file
 function M.clear_cache(filepath)

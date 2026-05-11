@@ -239,7 +239,11 @@ function M.open(filepath, opts)
     }
   end
 
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
+  local placeholder_drawn = false
+  if not render.is_cached(filepath, render_size) then
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
+    placeholder_drawn = true
+  end
 
   render.render(filepath, function(sixel_data, err)
     if restore_page then
@@ -257,9 +261,11 @@ function M.open(filepath, opts)
     end
 
     vim.schedule(function()
-      vim.bo[buf].modifiable = true
-      vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-      vim.bo[buf].modifiable = false
+      if placeholder_drawn then
+        vim.bo[buf].modifiable = true
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+        vim.bo[buf].modifiable = false
+      end
       clean_win(win)
       M._render_in_win(win, buf, sixel_data, geom, filetype)
       if filetype == "pdf" and not M._pdf_state[buf] then
@@ -324,9 +330,6 @@ function M.open_in_buf(buf, filepath, opts)
   vim.bo[buf].modifiable = true
   vim.b[buf].sixel_preview_filepath = filepath
 
-  local fname = vim.fn.fnamemodify(filepath, ":t")
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
-
   -- Find the window displaying this buffer to get geometry
   local target_win = nil
   for _, win in ipairs(vim.api.nvim_list_wins()) do
@@ -335,11 +338,10 @@ function M.open_in_buf(buf, filepath, opts)
       break
     end
   end
-
-  -- Fallback to current window
-  if not target_win then
-    target_win = vim.api.nvim_get_current_win()
-  end
+  -- If the buffer isn't visible, don't render: BufEnter schedules can fire
+  -- after oil swapped the buffer out, and rendering to "the current window"
+  -- would draw sixel in the wrong place.
+  if not target_win then return end
 
   local geom = M._win_geometry(target_win)
   local term = M._terminal_pixels()
@@ -356,6 +358,17 @@ function M.open_in_buf(buf, filepath, opts)
       max_width = math.max(100, geom.width_cells * term.cell_w - (term.cell_w * padding)),
       max_height = math.max(100, geom.height_cells * term.cell_h - (term.cell_h * padding)),
     }
+  end
+
+  -- Only paint a "Rendering..." placeholder when we actually have to wait. On
+  -- the cache-hit path we leave the (already empty) buffer alone — otherwise
+  -- the buffer mutation triggers nvim cell redraws that wipe the sixel pixels
+  -- in tmux right after we send them.
+  local placeholder_drawn = false
+  if not render.is_cached(filepath, render_size) then
+    local fname = vim.fn.fnamemodify(filepath, ":t")
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
+    placeholder_drawn = true
   end
 
   render.render(filepath, function(sixel_data, err)
@@ -378,9 +391,14 @@ function M.open_in_buf(buf, filepath, opts)
     vim.schedule(function()
       if not vim.api.nvim_buf_is_valid(buf) then return end
 
-      vim.bo[buf].modifiable = true
-      vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-      vim.bo[buf].modifiable = false
+      -- Only clear the buffer if we actually wrote the placeholder. Touching
+      -- the buffer when it's already empty triggers cell redraws that wipe the
+      -- sixel in tmux.
+      if placeholder_drawn then
+        vim.bo[buf].modifiable = true
+        vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+        vim.bo[buf].modifiable = false
+      end
 
       -- Find current window for this buffer (may have changed)
       local win = nil
