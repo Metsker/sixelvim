@@ -214,6 +214,9 @@ function M.open(filepath, opts)
   local fname = vim.fn.fnamemodify(filepath, ":t")
   local title = config.options.tab.title .. ": " .. fname
   local buf = M._get_or_create_buf(title)
+  -- Record the actual file being previewed; the buffer name is the tab title,
+  -- not a real path, so BufEnter re-render must use this instead.
+  vim.b[buf].sixel_preview_filepath = filepath
   local win = vim.api.nvim_get_current_win()
   local geom = M._win_geometry(win)
 
@@ -319,9 +322,9 @@ function M.open_in_buf(buf, filepath, opts)
   vim.bo[buf].swapfile = false
   vim.bo[buf].filetype = "sixel-preview"
   vim.bo[buf].modifiable = true
+  vim.b[buf].sixel_preview_filepath = filepath
 
   local fname = vim.fn.fnamemodify(filepath, ":t")
-  vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "Rendering " .. fname .. "..." })
 
   -- Find the window displaying this buffer to get geometry

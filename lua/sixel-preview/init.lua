@@ -97,8 +97,13 @@ function M.setup(opts)
       group = group,
       callback = function(ev)
         if vim.bo[ev.buf].filetype == "sixel-preview" then
-          local filepath = vim.api.nvim_buf_get_name(ev.buf)
-          if filepath == "" then return end
+          -- Prefer the tracked filepath: for :SixelPreview the buffer name is
+          -- the tab title ("Preview: img.png"), not a real path.
+          local filepath = vim.b[ev.buf].sixel_preview_filepath
+          if not filepath or filepath == "" then
+            filepath = vim.api.nvim_buf_get_name(ev.buf)
+          end
+          if not filepath or filepath == "" then return end
           filepath = vim.fn.fnamemodify(filepath, ":p")
           if vim.fn.filereadable(filepath) == 1 then
             vim.schedule(function()
