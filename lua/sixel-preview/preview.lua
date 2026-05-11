@@ -140,6 +140,41 @@ function M._find_buf_win(buf)
   return fallback
 end
 
+--- Whether the given (non-floating) window is overlapped by any floating
+--- window in the same tab. Sixel pixels are drawn in the terminal's graphics
+--- layer and would leak through anything nvim layers on top — so when something
+--- like oil's UI is covering the buffer, we skip the render entirely.
+---@param win number
+---@return boolean
+function M._is_win_covered(win)
+  local cfg = vim.api.nvim_win_get_config(win)
+  if cfg.relative ~= "" then
+    return false
+  end
+  local pos = vim.api.nvim_win_get_position(win)
+  local r, c = pos[1], pos[2]
+  local h = vim.api.nvim_win_get_height(win)
+  local w = vim.api.nvim_win_get_width(win)
+
+  local tab = vim.api.nvim_win_get_tabpage(win)
+  for _, other in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+    if other ~= win then
+      local ocfg = vim.api.nvim_win_get_config(other)
+      if ocfg.relative ~= "" then
+        local orow = tonumber(ocfg.row) or 0
+        local ocol = tonumber(ocfg.col) or 0
+        local oh = ocfg.height or 0
+        local ow = ocfg.width or 0
+        if r < orow + oh and r + h > orow
+          and c < ocol + ow and c + w > ocol then
+          return true
+        end
+      end
+    end
+  end
+  return false
+end
+
 --- Calculate the window's screen position and pixel dimensions.
 ---@param win number Window handle
 ---@return { row: number, col: number, width_px: number, height_px: number, width_cells: number, height_cells: number }
@@ -188,6 +223,7 @@ end
 ---@param filetype? string "image" or "pdf"
 function M._render_in_win(win, buf, sixel_data, geom, filetype)
   if not sixel_data or #sixel_data == 0 then return end
+  if M._is_win_covered(win) then return end
 
   local pad_rows, pad_cols
   if filetype == "pdf" then
