@@ -91,9 +91,12 @@ function M.render(filepath, callback, size)
     return
   end
 
-  -- For PDF pipeline, join into shell command string
-  local use_shell = filetype == "pdf"
-    and config.options.converters.pdf == "pdftoppm"
+  -- Some pipelines need a shell: the PDF flow uses "&&"/"&" chaining, and the
+  -- chafa flow uses ">" to redirect chafa's stdout into the temp file.
+  local use_shell = (filetype == "pdf"
+      and config.options.converters.pdf == "pdftoppm")
+    or (filetype == "image"
+      and config.options.converters.image == "chafa")
 
   local job_cmd = use_shell and table.concat(cmd, " ") or cmd
 

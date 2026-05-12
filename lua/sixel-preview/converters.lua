@@ -39,11 +39,14 @@ function M._image_cmd(filepath, sixel)
     }, nil
 
   elseif backend == "chafa" then
+    -- chafa only writes to stdout, so we shell-redirect into the sentinel
+    -- "sixel:-" that render.lua rewrites to a temp file path.
     return {
       opts.bin.chafa,
       "--format", "sixels",
       "--size", sixel.max_width .. "x" .. sixel.max_height,
-      filepath,
+      vim.fn.shellescape(filepath),
+      ">", "sixel:-",
     }, nil
   end
 
