@@ -53,6 +53,14 @@ function M._image_cmd(filepath, sixel)
       opts.bin.chafa,
       "--format", "sixels",
       "--size", cols .. "x" .. rows,
+      -- Cap the palette to sixel's native max (256) instead of chafa's
+      -- truecolor default, which roughly halves the payload at the same
+      -- preview dimensions. Configurable via `sixel.chafa_colors`.
+      "--colors", tostring((opts.sixel and opts.sixel.chafa_colors) or 256),
+      -- Fill the view consistently regardless of source pixel dimensions,
+      -- so small images upscale to the requested cell area instead of
+      -- rendering tiny at their native size.
+      "--scale", "max",
       filepath,
     }, nil
   end

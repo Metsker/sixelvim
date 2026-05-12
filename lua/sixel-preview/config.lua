@@ -13,6 +13,11 @@ M.defaults = {
     max_height = 600,
     background = "none", -- "none", "black", "white"
     cell_size = { 8, 16 }, -- { width, height } in pixels per cell, used for positioning
+    -- Palette size for chafa output. Sixel maxes out at 256 colors per spec;
+    -- chafa's default ("full" truecolor) doubles the payload by encoding
+    -- extra palette swaps. Lower values shrink output further (16 ≈ 6× smaller
+    -- than 256) at the cost of color banding. Accepts: 2, 8, 16, 240, 256, "full".
+    chafa_colors = 256,
   },
 
   -- PDF-specific
