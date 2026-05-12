@@ -223,7 +223,11 @@ end
 ---@param filetype? string "image" or "pdf"
 function M._render_in_win(win, buf, sixel_data, geom, filetype)
   if not sixel_data or #sixel_data == 0 then return end
-  if M._is_win_covered(win) then return end
+  if config.options.window_overlap_clear ~= false
+    and M._is_win_covered(win)
+  then
+    return
+  end
 
   local pad_rows, pad_cols
   if filetype == "pdf" then

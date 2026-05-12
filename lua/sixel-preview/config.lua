@@ -24,6 +24,11 @@ M.defaults = {
   -- Auto-preview when opening supported files (e.g. from file explorer)
   auto_preview = true,
 
+  -- Skip rendering when a floating window overlaps the preview window. Useful
+  -- to prevent sixel pixels from leaking out from behind UIs like oil's float.
+  -- Set to false to draw sixel regardless of overlapping floats.
+  window_overlap_clear = true,
+
   -- Tab behavior
   tab = {
     close_on_leave = false, -- close preview tab when you switch away
