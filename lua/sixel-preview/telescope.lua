@@ -26,6 +26,12 @@ function M.previewer_maker(filepath, bufnr, opts)
       vim.bo[bufnr].modifiable = true
       vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, {})
     end)
+    -- Force a full screen redraw to wipe the previous entry's sixel pixels.
+    -- Oil/:e change buffers so nvim's redraw naturally clears the whole
+    -- window's cells (which clears the pixels in tmux). Telescope reuses one
+    -- preview buffer, so only the rows containing text get redrawn — pixels
+    -- in other rows persist and the new image draws on top of the old one.
+    pcall(vim.cmd, "mode")
     preview.open_in_buf(bufnr, filepath)
   else
     require("telescope.previewers").buffer_previewer_maker(filepath, bufnr, opts)
