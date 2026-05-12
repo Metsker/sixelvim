@@ -24,6 +24,13 @@ M.defaults = {
   -- Auto-preview when opening supported files (e.g. from file explorer)
   auto_preview = true,
 
+  -- In-memory render cache. Keyed by file path + mtime + render dimensions.
+  -- Sixel byte strings live here; the LRU evicts the oldest entries once the
+  -- total goes over `max_bytes`.
+  cache = {
+    max_bytes = 100 * 1024 * 1024, -- 100 MB
+  },
+
   -- Skip rendering when a floating window overlaps the preview window. Useful
   -- to prevent sixel pixels from leaking out from behind UIs like oil's float.
   -- Set to false to draw sixel regardless of overlapping floats.

@@ -6,6 +6,12 @@ function M.setup(opts)
   local config = require("sixel-preview.config")
   local preview = require("sixel-preview.preview")
   local converters = require("sixel-preview.converters")
+  local render = require("sixel-preview.render")
+
+  -- Propagate configurable cache budget into the render module.
+  if config.options.cache and config.options.cache.max_bytes then
+    render._cache_max_bytes = config.options.cache.max_bytes
+  end
 
   -- User commands
   vim.api.nvim_create_user_command("SixelPreview", function(cmd_opts)
