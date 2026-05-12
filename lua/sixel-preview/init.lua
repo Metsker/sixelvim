@@ -74,8 +74,22 @@ function M.setup(opts)
         -- Only handle files that actually exist on disk
         if vim.fn.filereadable(filepath) ~= 1 then return end
 
-        -- Render sixel directly in this buffer (the one the explorer opened)
-        preview.open_in_buf(ev.buf, filepath)
+        local buf = ev.buf
+        -- Clear any leftover content the explorer may have written into the
+        -- buffer before BufReadCmd fired, so we never briefly show stale text
+        -- under the new image.
+        pcall(function()
+          vim.bo[buf].modifiable = true
+          vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+        end)
+        -- Defer the render and run `mode` first. Mirrors the telescope path:
+        -- the deferral lets nvim's post-read autocmds finish before we touch
+        -- buffer/window state, and `mode` wipes any prior sixel pixels so the
+        -- new image isn't drawn on top of the previous one.
+        vim.schedule(function()
+          pcall(vim.cmd, "mode")
+          preview.open_in_buf(buf, filepath)
+        end)
       end,
     })
 
@@ -116,8 +130,17 @@ function M.setup(opts)
           if not filepath or filepath == "" then return end
           filepath = vim.fn.fnamemodify(filepath, ":p")
           if vim.fn.filereadable(filepath) == 1 then
+            local buf = ev.buf
+            -- Same pattern as BufReadCmd / telescope: clear stale text sync,
+            -- then defer the render with a `mode` call to wipe the previous
+            -- sixel pixels before drawing the new image.
+            pcall(function()
+              vim.bo[buf].modifiable = true
+              vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+            end)
             vim.schedule(function()
-              preview.open_in_buf(ev.buf, filepath)
+              pcall(vim.cmd, "mode")
+              preview.open_in_buf(buf, filepath)
             end)
           end
         end
