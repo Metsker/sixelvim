@@ -40,8 +40,7 @@ function M._image_cmd(filepath, sixel)
 
   elseif backend == "chafa" then
     -- chafa's --size is in *cells*, not pixels — convert before passing.
-    -- chafa only writes to stdout, so we shell-redirect into the sentinel
-    -- "sixel:-" that render.lua rewrites to a temp file path.
+    -- chafa writes sixel to stdout by default; render.lua captures it.
     local cell_w = sixel.cell_w
       or (sixel.cell_size and sixel.cell_size[1])
       or 8
@@ -54,8 +53,7 @@ function M._image_cmd(filepath, sixel)
       opts.bin.chafa,
       "--format", "sixels",
       "--size", cols .. "x" .. rows,
-      vim.fn.shellescape(filepath),
-      ">", "sixel:-",
+      filepath,
     }, nil
   end
 
