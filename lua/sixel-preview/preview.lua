@@ -278,13 +278,18 @@ function M.open(filepath, opts)
 
   -- Use actual terminal pixel dimensions for sizing
   local term = M._terminal_pixels()
+  -- Cap the render size so sixel payloads stay manageable. For full-screen
+  -- buffers with 2K source images, chafa output for an uncapped window can be
+  -- 10+ MB, which tmux's passthrough / nvim_chan_send don't handle reliably.
+  local cap_w = config.options.sixel.max_width or 800
+  local cap_h = config.options.sixel.max_height or 600
 
   local render_size
   if filetype == "pdf" then
     -- PDFs: fill the window area (use window cell count * actual cell pixels)
     render_size = {
-      max_width = geom.width_cells * term.cell_w,
-      max_height = (geom.height_cells - 2) * term.cell_h,  -- reserve 2 rows for statusline
+      max_width = math.min(cap_w, geom.width_cells * term.cell_w),
+      max_height = math.min(cap_h, (geom.height_cells - 2) * term.cell_h),
       cell_w = term.cell_w,
       cell_h = term.cell_h,
     }
@@ -292,8 +297,8 @@ function M.open(filepath, opts)
     -- Images: fit in window with padding
     local padding = 4
     render_size = {
-      max_width = math.max(100, geom.width_cells * term.cell_w - (term.cell_w * padding)),
-      max_height = math.max(100, geom.height_cells * term.cell_h - (term.cell_h * padding)),
+      max_width = math.max(100, math.min(cap_w, geom.width_cells * term.cell_w - (term.cell_w * padding))),
+      max_height = math.max(100, math.min(cap_h, geom.height_cells * term.cell_h - (term.cell_h * padding))),
       cell_w = term.cell_w,
       cell_h = term.cell_h,
     }
@@ -398,20 +403,22 @@ function M.open_in_buf(buf, filepath, opts)
 
   local geom = M._win_geometry(target_win)
   local term = M._terminal_pixels()
+  local cap_w = config.options.sixel.max_width or 800
+  local cap_h = config.options.sixel.max_height or 600
 
   local render_size
   if filetype == "pdf" then
     render_size = {
-      max_width = geom.width_cells * term.cell_w,
-      max_height = (geom.height_cells - 2) * term.cell_h,
+      max_width = math.min(cap_w, geom.width_cells * term.cell_w),
+      max_height = math.min(cap_h, (geom.height_cells - 2) * term.cell_h),
       cell_w = term.cell_w,
       cell_h = term.cell_h,
     }
   else
     local padding = 4
     render_size = {
-      max_width = math.max(100, geom.width_cells * term.cell_w - (term.cell_w * padding)),
-      max_height = math.max(100, geom.height_cells * term.cell_h - (term.cell_h * padding)),
+      max_width = math.max(100, math.min(cap_w, geom.width_cells * term.cell_w - (term.cell_w * padding))),
+      max_height = math.max(100, math.min(cap_h, geom.height_cells * term.cell_h - (term.cell_h * padding))),
       cell_w = term.cell_w,
       cell_h = term.cell_h,
     }
