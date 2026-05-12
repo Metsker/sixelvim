@@ -285,6 +285,8 @@ function M.open(filepath, opts)
     render_size = {
       max_width = geom.width_cells * term.cell_w,
       max_height = (geom.height_cells - 2) * term.cell_h,  -- reserve 2 rows for statusline
+      cell_w = term.cell_w,
+      cell_h = term.cell_h,
     }
   else
     -- Images: fit in window with padding
@@ -292,6 +294,8 @@ function M.open(filepath, opts)
     render_size = {
       max_width = math.max(100, geom.width_cells * term.cell_w - (term.cell_w * padding)),
       max_height = math.max(100, geom.height_cells * term.cell_h - (term.cell_h * padding)),
+      cell_w = term.cell_w,
+      cell_h = term.cell_h,
     }
   end
 
@@ -400,12 +404,16 @@ function M.open_in_buf(buf, filepath, opts)
     render_size = {
       max_width = geom.width_cells * term.cell_w,
       max_height = (geom.height_cells - 2) * term.cell_h,
+      cell_w = term.cell_w,
+      cell_h = term.cell_h,
     }
   else
     local padding = 4
     render_size = {
       max_width = math.max(100, geom.width_cells * term.cell_w - (term.cell_w * padding)),
       max_height = math.max(100, geom.height_cells * term.cell_h - (term.cell_h * padding)),
+      cell_w = term.cell_w,
+      cell_h = term.cell_h,
     }
   end
 
