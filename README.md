@@ -19,6 +19,7 @@ Built for **Windows Terminal 1.22+**, but works on any sixel-capable terminal (W
 - **Image preview** — PNG, JPG, GIF, SVG, WebP, BMP, TIFF, ICO
 - **PDF preview** with page-by-page navigation (`n`/`p`/`J`/`K`)
 - **File explorer integration** — auto-previews when you open an image/PDF from Snacks explorer, neo-tree, oil.nvim, etc.
+- **Picker integrations** — opt-in sixel previews inside the snacks.nvim picker, the mini.files preview pane, and telescope
 - **Dynamic sizing** — detects your terminal's pixel dimensions and scales images to fit
 - **Render caching** — in-memory cache with mtime-based invalidation
 - **Clean tab switching** — sixel artifacts are cleared when you switch tabs, re-rendered when you return
@@ -112,6 +113,35 @@ When `auto_preview` is enabled (the default), opening any supported file from a 
 - [oil.nvim](https://github.com/stevearc/oil.nvim)
 - Any plugin that triggers `BufReadCmd`
 
+### Picker / Explorer Integrations
+
+Some plugins draw previews in their own scratch windows instead of loading the
+file through `BufReadCmd`. Opt-in hooks are available for those:
+
+```lua
+require("sixel-preview").setup({
+  integrations = {
+    snacks_picker = true, -- snacks.nvim picker: image/PDF previews render as sixel
+    mini_files = true,    -- mini.files: preview pane renders images/PDFs as sixel
+  },
+})
+```
+
+The snacks integration wraps the picker's default `file` previewer and re-draws
+the image after snacks' own repaints (sixel pixels live in the terminal's
+graphics layer, so any window repaint wipes them). The mini.files integration
+requires `windows.preview = true` in mini.files' own setup.
+
+For telescope, set the previewer maker instead:
+
+```lua
+require("telescope").setup({
+  defaults = {
+    buffer_previewer_maker = require("sixel-preview.telescope").previewer_maker,
+  },
+})
+```
+
 ## Configuration
 
 These are the defaults — you only need to set what you want to change:
@@ -140,6 +170,12 @@ require("sixel-preview").setup({
 
   -- Auto-preview when opening supported files
   auto_preview = true,
+
+  -- Opt-in picker/explorer integrations
+  integrations = {
+    snacks_picker = false, -- wrap the snacks.nvim picker `file` previewer
+    mini_files = false,    -- render the mini.files explorer preview pane
+  },
 
   -- Tab behavior
   tab = {

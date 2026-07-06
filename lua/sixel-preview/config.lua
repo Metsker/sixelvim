@@ -41,6 +41,14 @@ M.defaults = {
   -- Set to false to draw sixel regardless of overlapping floats.
   window_overlap_clear = true,
 
+  -- Deep plugin integrations (beyond the BufReadCmd auto-preview). Each one
+  -- hooks the named plugin's own preview window to render images/PDFs as
+  -- sixel. Telescope has its own opt-in module (see README).
+  integrations = {
+    snacks_picker = false, -- wrap the snacks.nvim picker `file` previewer
+    mini_files = false, -- render the mini.files explorer preview pane
+  },
+
   -- Tab behavior
   tab = {
     close_on_leave = false, -- close preview tab when you switch away

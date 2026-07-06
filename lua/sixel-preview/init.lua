@@ -56,6 +56,15 @@ function M.setup(opts)
     desc = "Clear sixel render cache",
   })
 
+  -- Opt-in picker/explorer integrations
+  local integrations = config.options.integrations or {}
+  if integrations.snacks_picker then
+    require("sixel-preview.snacks").attach()
+  end
+  if integrations.mini_files then
+    require("sixel-preview.minifiles").attach()
+  end
+
   -- Auto-preview: intercept BufReadCmd for supported file types
   -- This fires when any buffer tries to load an image/PDF (e.g. from Snacks explorer)
   if config.options.auto_preview ~= false then
