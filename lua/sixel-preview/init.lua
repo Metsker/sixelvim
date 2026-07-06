@@ -64,6 +64,9 @@ function M.setup(opts)
   if integrations.mini_files then
     require("sixel-preview.minifiles").attach()
   end
+  if integrations.telescope then
+    require("sixel-preview.telescope").attach()
+  end
 
   -- Auto-preview: intercept BufReadCmd for supported file types
   -- This fires when any buffer tries to load an image/PDF (e.g. from Snacks explorer)

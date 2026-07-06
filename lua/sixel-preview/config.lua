@@ -43,10 +43,12 @@ M.defaults = {
 
   -- Deep plugin integrations (beyond the BufReadCmd auto-preview). Each one
   -- hooks the named plugin's own preview window to render images/PDFs as
-  -- sixel. Telescope has its own opt-in module (see README).
+  -- sixel. All are fully optional: nothing is loaded unless enabled, and a
+  -- missing target plugin just logs a warning.
   integrations = {
     snacks_picker = false, -- wrap the snacks.nvim picker `file` previewer
     mini_files = false, -- render the mini.files explorer preview pane
+    telescope = false, -- route telescope's default buffer previewer
   },
 
   -- Tab behavior

@@ -123,22 +123,34 @@ require("sixel-preview").setup({
   integrations = {
     snacks_picker = true, -- snacks.nvim picker: image/PDF previews render as sixel
     mini_files = true,    -- mini.files: preview pane renders images/PDFs as sixel
+    telescope = true,     -- telescope: default buffer previewer renders as sixel
   },
 })
 ```
 
-The snacks integration wraps the picker's default `file` previewer and re-draws
-the image after snacks' own repaints (sixel pixels live in the terminal's
-graphics layer, so any window repaint wipes them). The mini.files integration
-requires `windows.preview = true` in mini.files' own setup.
+All integrations are fully optional: they default to off, their code is only
+loaded when enabled, and a missing target plugin just logs a warning.
 
-For telescope, set the previewer maker instead:
+- **snacks_picker** wraps the picker's default `file` previewer and re-draws
+  the image after snacks' own repaints (sixel pixels live in the terminal's
+  graphics layer, so any window repaint wipes them).
+- **mini_files** requires `windows.preview = true` in mini.files' own setup.
+- **telescope** routes telescope's default `buffer_previewer_maker` through
+  the sixel previewer, regardless of whether telescope's setup runs before or
+  after this plugin's. A user-supplied maker in telescope's setup wins.
+
+For finer control of telescope you can skip the flag and wire it manually -
+globally or per picker:
 
 ```lua
 require("telescope").setup({
   defaults = {
     buffer_previewer_maker = require("sixel-preview.telescope").previewer_maker,
   },
+})
+
+require("telescope.builtin").find_files({
+  previewer = require("sixel-preview.telescope").previewer(),
 })
 ```
 
@@ -175,6 +187,7 @@ require("sixel-preview").setup({
   integrations = {
     snacks_picker = false, -- wrap the snacks.nvim picker `file` previewer
     mini_files = false,    -- render the mini.files explorer preview pane
+    telescope = false,     -- route telescope's default buffer previewer
   },
 
   -- Tab behavior

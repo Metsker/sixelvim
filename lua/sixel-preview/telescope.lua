@@ -3,6 +3,45 @@ local preview = require("sixel-preview.preview")
 
 local M = {}
 
+M._attached = false
+
+--- Route telescope's default buffer previewer through `previewer_maker`, so
+--- image/PDF entries render as sixel in every built-in picker. Equivalent to
+--- setting `defaults.buffer_previewer_maker` in telescope's own setup, but
+--- works regardless of load order.
+---
+--- Enabled via `setup({ integrations = { telescope = true } })`, or call
+--- `require("sixel-preview.telescope").attach()` directly.
+function M.attach()
+  if M._attached then
+    return
+  end
+  local ok, telescope = pcall(require, "telescope")
+  if not ok then
+    vim.notify("[sixel-preview] telescope.nvim not found; telescope integration disabled", vim.log.levels.WARN)
+    return
+  end
+  M._attached = true
+
+  local function patch()
+    local values = require("telescope.config").values
+    -- Respect a user-supplied maker: only replace telescope's stock default.
+    local stock = require("telescope.previewers").buffer_previewer_maker
+    if values.buffer_previewer_maker == nil or values.buffer_previewer_maker == stock then
+      values.buffer_previewer_maker = M.previewer_maker
+    end
+  end
+
+  patch()
+  -- telescope.setup() rebuilds config.values from its defaults, wiping the
+  -- patch, so re-apply after any later setup call.
+  local orig_setup = telescope.setup
+  telescope.setup = function(opts)
+    orig_setup(opts)
+    patch()
+  end
+end
+
 --- Drop-in replacement for telescope's `buffer_previewer_maker`. For image
 --- and PDF entries, renders sixel into the preview window. For everything
 --- else, delegates to telescope's default `file_maker`.
